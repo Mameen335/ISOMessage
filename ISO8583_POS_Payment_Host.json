@@ -1,0 +1,513 @@
+{
+  "uuid": "a1b2c3d4-1111-4111-a111-111111111111",
+  "lastMigration": 33,
+  "name": "ISO8583 POS Payment Host Simulator",
+  "endpointPrefix": "",
+  "latency": 150,
+  "port": 5000,
+  "hostname": "0.0.0.0",
+  "proxyMode": false,
+  "proxyHost": "",
+  "proxyRemovePrefix": false,
+  "tlsOptions": {
+    "enabled": false,
+    "type": "CERT",
+    "pfxPath": "",
+    "certPath": "",
+    "keyPath": "",
+    "caPath": "",
+    "passphrase": ""
+  },
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json; charset=utf-8"
+    },
+    {
+      "key": "X-Payment-Gateway",
+      "value": "MockPOS-Simulator/2.0"
+    },
+    {
+      "key": "X-ISO-Standard",
+      "value": "ISO-8583:1993"
+    },
+    {
+      "key": "X-Powered-By",
+      "value": "MockPOS-Engine"
+    },
+    {
+      "key": "Cache-Control",
+      "value": "no-store, no-cache, must-revalidate"
+    },
+    {
+      "key": "X-Content-Type-Options",
+      "value": "nosniff"
+    },
+    {
+      "key": "X-Frame-Options",
+      "value": "DENY"
+    },
+    {
+      "key": "Strict-Transport-Security",
+      "value": "max-age=31536000; includeSubDomains"
+    },
+    {
+      "key": "X-Request-ID",
+      "value": "{{faker 'string.uuid'}}"
+    },
+    {
+      "key": "X-Response-Timestamp",
+      "value": "{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z"
+    }
+  ],
+  "proxyReqHeaders": [],
+  "proxyResHeaders": [],
+  "data": [],
+  "callbacks": [],
+  "folders": [],
+  "routes": [
+    {
+      "uuid": "b2c3d4e5-2222-4222-b222-222222222221",
+      "type": "http",
+      "documentation": "ISO8583 Financial Transaction Request — MTI 0200 (Purchase Authorization)\n\nSAMPLE REQUEST — Approved (amount ≤ 5000):\nPOST http://localhost:5000/iso\nContent-Type: application/json\n{\n  \"mti\": \"0200\",\n  \"fields\": {\n    \"2\": \"5413330089010012\",\n    \"3\": \"000000\",\n    \"4\": \"000000001000\",\n    \"11\": \"123456\",\n    \"41\": \"TERM001\"\n  }\n}\n\nSAMPLE REQUEST — Insufficient Funds (amount > 5000):\n{\n  \"mti\": \"0200\",\n  \"fields\": {\n    \"2\": \"5413330089010012\",\n    \"3\": \"000000\",\n    \"4\": \"000000010000\",\n    \"11\": \"654321\",\n    \"41\": \"TERM001\"\n  }\n}\n\nSAMPLE REQUEST — Simulate Timeout:\nAdd header: X-Simulate-Timeout: true\n\nRESPONSE CODES:\n  00 = Approved\n  51 = Insufficient Funds\n  30 = Format Error (missing MTI)\n  40 = Invalid Amount\n  68 = Response Received Too Late (timeout)\n\nFIELD MAP:\n  2  = PAN (Primary Account Number)\n  3  = Processing Code\n  4  = Amount (12-digit zero-padded, in cents)\n  11 = STAN (System Trace Audit Number)\n  38 = Authorization ID Response\n  39 = Response Code\n  41 = Card Acceptor Terminal ID\n  44 = Additional Response Data (timestamp)",
+      "method": "post",
+      "endpoint": "iso",
+      "responseMode": null,
+      "responses": [
+        {
+          "uuid": "1763e315-b2eb-4f24-b61e-0bfc229c388e",
+          "body": "{\n  \"mti\": \"0210\",\n  \"fields\": {\n    \"39\": \"68\",\n    \"44\": \"{{now 'YYYYMMDDHHmmss'}}\",\n    \"message\": \"RESPONSE RECEIVED TOO LATE\"\n  },\n  \"error\": {\n    \"code\": \"HOST_TIMEOUT\",\n    \"detail\": \"Host did not respond within the maximum allowed time window\",\n    \"timestamp\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\",\n    \"retryable\": true\n  },\n  \"log\": {\n    \"level\": \"ERROR\",\n    \"event\": \"TIMEOUT\",\n    \"mti_request\": \"0200\",\n    \"mti_response\": \"0210\",\n    \"rc\": \"68\",\n    \"latency_ms\": 5000,\n    \"terminal\": \"{{body 'fields.41'}}\",\n    \"stan\": \"{{body 'fields.11'}}\",\n    \"ts\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\"\n  }\n}",
+          "latency": 5000,
+          "statusCode": 504,
+          "label": "504 — Host Timeout (X-Simulate-Timeout: true)",
+          "headers": [
+            {
+              "key": "X-Response-Code",
+              "value": "68"
+            },
+            {
+              "key": "X-Transaction-Status",
+              "value": "TIMEOUT"
+            },
+            {
+              "key": "Retry-After",
+              "value": "30"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "X-Simulate-Timeout",
+              "value": "true",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "0e502e3d-92f2-40fd-8bf8-eaaf4ce70a07",
+          "body": "{\n  \"mti\": \"0210\",\n  \"fields\": {\n    \"39\": \"30\",\n    \"44\": \"{{now 'YYYYMMDDHHmmss'}}\",\n    \"message\": \"FORMAT ERROR — MISSING OR INVALID MTI\"\n  },\n  \"error\": {\n    \"code\": \"FORMAT_ERROR\",\n    \"detail\": \"Request body must contain a valid 'mti' field (e.g. 0200)\",\n    \"timestamp\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\",\n    \"retryable\": false\n  },\n  \"log\": {\n    \"level\": \"WARN\",\n    \"event\": \"INVALID_REQUEST\",\n    \"mti_request\": null,\n    \"mti_response\": \"0210\",\n    \"rc\": \"30\",\n    \"terminal\": \"{{body 'fields.41'}}\",\n    \"ts\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\"\n  }\n}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "400 — Format Error (Missing MTI)",
+          "headers": [
+            {
+              "key": "X-Response-Code",
+              "value": "30"
+            },
+            {
+              "key": "X-Transaction-Status",
+              "value": "REJECTED"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "mti",
+              "value": "",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "e87ae5a5-5bd1-4531-af7f-d141a848a1b1",
+          "body": "{\n  \"mti\": \"0210\",\n  \"fields\": {\n    \"39\": \"40\",\n    \"44\": \"{{now 'YYYYMMDDHHmmss'}}\",\n    \"message\": \"INVALID AMOUNT — FIELD 4 MISSING OR MALFORMED\"\n  },\n  \"error\": {\n    \"code\": \"INVALID_AMOUNT\",\n    \"detail\": \"Field 4 (Amount) must be a 12-digit zero-padded numeric string (e.g. 000000001000)\",\n    \"timestamp\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\",\n    \"retryable\": false\n  },\n  \"log\": {\n    \"level\": \"WARN\",\n    \"event\": \"INVALID_AMOUNT\",\n    \"mti_request\": \"{{body 'mti'}}\",\n    \"mti_response\": \"0210\",\n    \"rc\": \"40\",\n    \"terminal\": \"{{body 'fields.41'}}\",\n    \"stan\": \"{{body 'fields.11'}}\",\n    \"ts\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\"\n  }\n}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "422 — Invalid Amount (Field 4 Missing)",
+          "headers": [
+            {
+              "key": "X-Response-Code",
+              "value": "40"
+            },
+            {
+              "key": "X-Transaction-Status",
+              "value": "REJECTED"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "fields.4",
+              "value": "",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "0df0e2fe-45a7-4a69-bd25-7da3673bb88a",
+          "body": "{\n  \"mti\": \"0210\",\n  \"fields\": {\n    \"2\": \"{{body 'fields.2'}}\",\n    \"3\": \"{{body 'fields.3'}}\",\n    \"4\": \"{{body 'fields.4'}}\",\n    \"11\": \"{{body 'fields.11'}}\",\n    \"38\": \"{{faker 'number.int' min=100000 max=999999}}\",\n    \"39\": \"00\",\n    \"41\": \"{{body 'fields.41'}}\",\n    \"44\": \"{{now 'YYYYMMDDHHmmss'}}\",\n    \"message\": \"APPROVED\"\n  },\n  \"metadata\": {\n    \"transactionId\": \"TXN-{{now 'YYYYMMDDHHmmss'}}-{{body 'fields.11'}}\",\n    \"timestamp\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\",\n    \"processingCode\": \"{{body 'fields.3'}}\",\n    \"amount\": \"{{body 'fields.4'}}\",\n    \"currency\": \"USD\",\n    \"terminalId\": \"{{body 'fields.41'}}\",\n    \"stan\": \"{{body 'fields.11'}}\",\n    \"responseCode\": \"00\",\n    \"responseDescription\": \"Transaction Approved\"\n  },\n  \"log\": {\n    \"level\": \"INFO\",\n    \"event\": \"APPROVED\",\n    \"mti_request\": \"0200\",\n    \"mti_response\": \"0210\",\n    \"rc\": \"00\",\n    \"amount\": \"{{body 'fields.4'}}\",\n    \"terminal\": \"{{body 'fields.41'}}\",\n    \"stan\": \"{{body 'fields.11'}}\",\n    \"ts\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\"\n  }\n}",
+          "latency": 200,
+          "statusCode": 200,
+          "label": "200 — Approved (Amount ≤ 5000 cents)",
+          "headers": [
+            {
+              "key": "X-Response-Code",
+              "value": "00"
+            },
+            {
+              "key": "X-Transaction-Status",
+              "value": "APPROVED"
+            },
+            {
+              "key": "X-Auth-Code",
+              "value": "{{faker 'number.int' min=100000 max=999999}}"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "fields.4",
+              "value": "^0{7}[0-4][0-9]{3}$|^000000005000$",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "cb92cf94-baa1-4f0f-b8ba-1a8dfb890f52",
+          "body": "{\n  \"mti\": \"0210\",\n  \"fields\": {\n    \"2\": \"{{body 'fields.2'}}\",\n    \"3\": \"{{body 'fields.3'}}\",\n    \"4\": \"{{body 'fields.4'}}\",\n    \"11\": \"{{body 'fields.11'}}\",\n    \"39\": \"51\",\n    \"41\": \"{{body 'fields.41'}}\",\n    \"44\": \"{{now 'YYYYMMDDHHmmss'}}\",\n    \"message\": \"INSUFFICIENT FUNDS\"\n  },\n  \"metadata\": {\n    \"transactionId\": \"TXN-{{now 'YYYYMMDDHHmmss'}}-{{body 'fields.11'}}\",\n    \"timestamp\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\",\n    \"processingCode\": \"{{body 'fields.3'}}\",\n    \"amount\": \"{{body 'fields.4'}}\",\n    \"currency\": \"USD\",\n    \"terminalId\": \"{{body 'fields.41'}}\",\n    \"stan\": \"{{body 'fields.11'}}\",\n    \"responseCode\": \"51\",\n    \"responseDescription\": \"Insufficient Funds — Transaction Declined\"\n  },\n  \"log\": {\n    \"level\": \"INFO\",\n    \"event\": \"DECLINED\",\n    \"mti_request\": \"0200\",\n    \"mti_response\": \"0210\",\n    \"rc\": \"51\",\n    \"amount\": \"{{body 'fields.4'}}\",\n    \"terminal\": \"{{body 'fields.41'}}\",\n    \"stan\": \"{{body 'fields.11'}}\",\n    \"ts\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\"\n  }\n}",
+          "latency": 150,
+          "statusCode": 200,
+          "label": "200 — Insufficient Funds (Amount > 5000 cents) [DEFAULT]",
+          "headers": [
+            {
+              "key": "X-Response-Code",
+              "value": "51"
+            },
+            {
+              "key": "X-Transaction-Status",
+              "value": "DECLINED"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "c3d4e5f6-3333-4333-c333-333333333331",
+      "type": "http",
+      "documentation": "ISO8583 Reversal Request — MTI 0400 (Transaction Reversal)\n\nSAMPLE REQUEST — Accepted:\nPOST http://localhost:5000/reversal\nContent-Type: application/json\n{\n  \"mti\": \"0400\",\n  \"fields\": {\n    \"2\": \"5413330089010012\",\n    \"3\": \"000000\",\n    \"4\": \"000000001000\",\n    \"11\": \"123456\",\n    \"41\": \"TERM001\"\n  }\n}\n\nSAMPLE REQUEST — Simulate Not Found:\nUse STAN (field 11) = 999999 to trigger a 404 Not Found response.\n\nRESPONSE CODES:\n  00 = Reversal Accepted\n  25 = Original Transaction Not Found\n  12 = Invalid Transaction\n\nUSE CASE:\nSent by the POS terminal when a previously authorized transaction\nneeds to be cancelled (e.g. communication failure after 0200).",
+      "method": "post",
+      "endpoint": "reversal",
+      "responseMode": null,
+      "responses": [
+        {
+          "uuid": "b34da682-5d15-4373-9d26-83799e69fd74",
+          "body": "{\n  \"mti\": \"0410\",\n  \"fields\": {\n    \"11\": \"{{body 'fields.11'}}\",\n    \"39\": \"25\",\n    \"41\": \"{{body 'fields.41'}}\",\n    \"44\": \"{{now 'YYYYMMDDHHmmss'}}\",\n    \"message\": \"REVERSAL NOT FOUND — ORIGINAL TRANSACTION DOES NOT EXIST\"\n  },\n  \"error\": {\n    \"code\": \"ORIGINAL_NOT_FOUND\",\n    \"detail\": \"No original transaction was found matching the provided STAN and terminal\",\n    \"originalStan\": \"{{body 'fields.11'}}\",\n    \"timestamp\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\",\n    \"retryable\": false\n  },\n  \"log\": {\n    \"level\": \"WARN\",\n    \"event\": \"REVERSAL_NOT_FOUND\",\n    \"mti_request\": \"0400\",\n    \"mti_response\": \"0410\",\n    \"rc\": \"25\",\n    \"terminal\": \"{{body 'fields.41'}}\",\n    \"stan\": \"{{body 'fields.11'}}\",\n    \"ts\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\"\n  }\n}",
+          "latency": 100,
+          "statusCode": 404,
+          "label": "404 — Original Transaction Not Found (STAN=999999)",
+          "headers": [
+            {
+              "key": "X-Response-Code",
+              "value": "25"
+            },
+            {
+              "key": "X-Transaction-Status",
+              "value": "NOT_FOUND"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "fields.11",
+              "value": "999999",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "b92bdd9a-dbb5-4b3a-b8f6-b32408170da3",
+          "body": "{\n  \"mti\": \"0410\",\n  \"fields\": {\n    \"39\": \"12\",\n    \"44\": \"{{now 'YYYYMMDDHHmmss'}}\",\n    \"message\": \"INVALID TRANSACTION — MTI MUST BE 0400\"\n  },\n  \"error\": {\n    \"code\": \"INVALID_TRANSACTION\",\n    \"detail\": \"Reversal endpoint requires MTI 0400\",\n    \"received\": \"{{body 'mti'}}\",\n    \"timestamp\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\",\n    \"retryable\": false\n  },\n  \"log\": {\n    \"level\": \"WARN\",\n    \"event\": \"INVALID_MTI\",\n    \"mti_request\": \"{{body 'mti'}}\",\n    \"mti_response\": \"0410\",\n    \"rc\": \"12\",\n    \"terminal\": \"{{body 'fields.41'}}\",\n    \"ts\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\"\n  }\n}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "400 — Invalid MTI for Reversal",
+          "headers": [
+            {
+              "key": "X-Response-Code",
+              "value": "12"
+            },
+            {
+              "key": "X-Transaction-Status",
+              "value": "REJECTED"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "mti",
+              "value": "^(?!0400$).*",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "03003d56-7ac1-4c0e-b461-8ce9926a1136",
+          "body": "{\n  \"mti\": \"0410\",\n  \"fields\": {\n    \"2\": \"{{body 'fields.2'}}\",\n    \"3\": \"{{body 'fields.3'}}\",\n    \"4\": \"{{body 'fields.4'}}\",\n    \"11\": \"{{body 'fields.11'}}\",\n    \"38\": \"{{faker 'number.int' min=100000 max=999999}}\",\n    \"39\": \"00\",\n    \"41\": \"{{body 'fields.41'}}\",\n    \"44\": \"{{now 'YYYYMMDDHHmmss'}}\",\n    \"message\": \"REVERSAL ACCEPTED\"\n  },\n  \"metadata\": {\n    \"reversalId\": \"REV-{{now 'YYYYMMDDHHmmss'}}-{{body 'fields.11'}}\",\n    \"timestamp\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\",\n    \"originalStan\": \"{{body 'fields.11'}}\",\n    \"originalAmount\": \"{{body 'fields.4'}}\",\n    \"currency\": \"USD\",\n    \"terminalId\": \"{{body 'fields.41'}}\",\n    \"responseCode\": \"00\",\n    \"responseDescription\": \"Reversal Accepted Successfully\"\n  },\n  \"log\": {\n    \"level\": \"INFO\",\n    \"event\": \"REVERSAL_ACCEPTED\",\n    \"mti_request\": \"0400\",\n    \"mti_response\": \"0410\",\n    \"rc\": \"00\",\n    \"amount\": \"{{body 'fields.4'}}\",\n    \"terminal\": \"{{body 'fields.41'}}\",\n    \"stan\": \"{{body 'fields.11'}}\",\n    \"ts\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\"\n  }\n}",
+          "latency": 300,
+          "statusCode": 200,
+          "label": "200 — Reversal Accepted [DEFAULT]",
+          "headers": [
+            {
+              "key": "X-Response-Code",
+              "value": "00"
+            },
+            {
+              "key": "X-Transaction-Status",
+              "value": "REVERSAL_ACCEPTED"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "d4e5f6a7-4444-4444-d444-444444444441",
+      "type": "http",
+      "documentation": "ISO8583 Network Management Request — MTI 0800 (End-of-Day Settlement)\n\nSAMPLE REQUEST — Success:\nPOST http://localhost:5000/settlement\nContent-Type: application/json\n{\n  \"mti\": \"0800\",\n  \"fields\": {\n    \"11\": \"000001\",\n    \"41\": \"TERM001\",\n    \"70\": \"301\"\n  }\n}\n\nSAMPLE REQUEST — Simulate System Error:\nSet terminal ID (field 41) = TERM999 to trigger a 503 response.\n\nSAMPLE REQUEST — Simulate Batch Mismatch:\nSet field 70 = 999 to trigger a 409 Conflict response.\n\nRESPONSE CODES:\n  00 = Settlement Success\n  96 = System Malfunction\n  58 = Transaction Not Permitted\n\nFIELD MAP:\n  11 = STAN\n  41 = Terminal ID\n  70 = Network Management Information Code\n       301 = Echo Test\n       401 = Cutover\n       501 = Sign-On\n       601 = End-of-Day Settlement",
+      "method": "post",
+      "endpoint": "settlement",
+      "responseMode": null,
+      "responses": [
+        {
+          "uuid": "fb8b737b-df5c-4286-85df-e106592c7249",
+          "body": "{\n  \"mti\": \"0810\",\n  \"fields\": {\n    \"11\": \"{{body 'fields.11'}}\",\n    \"39\": \"96\",\n    \"41\": \"{{body 'fields.41'}}\",\n    \"44\": \"{{now 'YYYYMMDDHHmmss'}}\",\n    \"message\": \"SETTLEMENT FAILED — SYSTEM MALFUNCTION\"\n  },\n  \"error\": {\n    \"code\": \"SYSTEM_MALFUNCTION\",\n    \"detail\": \"Settlement could not be completed due to an internal system error\",\n    \"timestamp\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\",\n    \"retryAfter\": 300,\n    \"retryable\": true\n  },\n  \"log\": {\n    \"level\": \"ERROR\",\n    \"event\": \"SETTLEMENT_FAILED\",\n    \"mti_request\": \"0800\",\n    \"mti_response\": \"0810\",\n    \"rc\": \"96\",\n    \"terminal\": \"{{body 'fields.41'}}\",\n    \"stan\": \"{{body 'fields.11'}}\",\n    \"ts\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\"\n  }\n}",
+          "latency": 0,
+          "statusCode": 503,
+          "label": "503 — System Malfunction (Terminal=TERM999)",
+          "headers": [
+            {
+              "key": "X-Response-Code",
+              "value": "96"
+            },
+            {
+              "key": "X-Transaction-Status",
+              "value": "SYSTEM_ERROR"
+            },
+            {
+              "key": "Retry-After",
+              "value": "300"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "fields.41",
+              "value": "TERM999",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "288d71c0-816a-40d5-8d1b-bc2f5803c7af",
+          "body": "{\n  \"mti\": \"0810\",\n  \"fields\": {\n    \"11\": \"{{body 'fields.11'}}\",\n    \"39\": \"58\",\n    \"41\": \"{{body 'fields.41'}}\",\n    \"44\": \"{{now 'YYYYMMDDHHmmss'}}\",\n    \"message\": \"TRANSACTION NOT PERMITTED — INVALID NETWORK MANAGEMENT CODE\"\n  },\n  \"error\": {\n    \"code\": \"INVALID_NMI_CODE\",\n    \"detail\": \"Field 70 (Network Management Information Code) value is not supported\",\n    \"received\": \"{{body 'fields.70'}}\",\n    \"supported\": [\"301\", \"401\", \"501\", \"601\"],\n    \"timestamp\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\",\n    \"retryable\": false\n  },\n  \"log\": {\n    \"level\": \"WARN\",\n    \"event\": \"INVALID_NMI\",\n    \"mti_request\": \"0800\",\n    \"mti_response\": \"0810\",\n    \"rc\": \"58\",\n    \"nmi\": \"{{body 'fields.70'}}\",\n    \"terminal\": \"{{body 'fields.41'}}\",\n    \"ts\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\"\n  }\n}",
+          "latency": 50,
+          "statusCode": 409,
+          "label": "409 — Invalid NMI Code (field 70 = 999)",
+          "headers": [
+            {
+              "key": "X-Response-Code",
+              "value": "58"
+            },
+            {
+              "key": "X-Transaction-Status",
+              "value": "NOT_PERMITTED"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "fields.70",
+              "value": "999",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "8d48e9db-85b8-4d6f-915b-92b6aea6d8c4",
+          "body": "{\n  \"mti\": \"0810\",\n  \"fields\": {\n    \"11\": \"{{body 'fields.11'}}\",\n    \"39\": \"00\",\n    \"41\": \"{{body 'fields.41'}}\",\n    \"44\": \"{{now 'YYYYMMDDHHmmss'}}\",\n    \"70\": \"{{body 'fields.70'}}\",\n    \"message\": \"SETTLEMENT SUCCESS\"\n  },\n  \"metadata\": {\n    \"settlementId\": \"STL-{{now 'YYYYMMDD'}}-{{faker 'number.int' min=1000 max=9999}}\",\n    \"settlementDate\": \"{{now 'YYYY-MM-DD'}}\",\n    \"settlementTime\": \"{{now 'HH:mm:ss'}}\",\n    \"timestamp\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\",\n    \"terminalId\": \"{{body 'fields.41'}}\",\n    \"stan\": \"{{body 'fields.11'}}\",\n    \"batchNumber\": \"{{faker 'number.int' min=1 max=999}}\",\n    \"totalTransactions\": \"{{faker 'number.int' min=1 max=500}}\",\n    \"totalAmount\": \"{{faker 'number.int' min=10000 max=9999999}}\",\n    \"currency\": \"USD\",\n    \"nmiCode\": \"{{body 'fields.70'}}\",\n    \"responseCode\": \"00\",\n    \"responseDescription\": \"Settlement Completed Successfully\"\n  },\n  \"log\": {\n    \"level\": \"INFO\",\n    \"event\": \"SETTLEMENT_SUCCESS\",\n    \"mti_request\": \"0800\",\n    \"mti_response\": \"0810\",\n    \"rc\": \"00\",\n    \"terminal\": \"{{body 'fields.41'}}\",\n    \"stan\": \"{{body 'fields.11'}}\",\n    \"ts\": \"{{now 'YYYY-MM-DDTHH:mm:ss.SSS'}}Z\"\n  }\n}",
+          "latency": 500,
+          "statusCode": 200,
+          "label": "200 — Settlement Success [DEFAULT]",
+          "headers": [
+            {
+              "key": "X-Response-Code",
+              "value": "00"
+            },
+            {
+              "key": "X-Transaction-Status",
+              "value": "SETTLEMENT_SUCCESS"
+            },
+            {
+              "key": "X-Settlement-Date",
+              "value": "{{now 'YYYYMMDD'}}"
+            },
+            {
+              "key": "X-Settlement-Ref",
+              "value": "STL-{{now 'YYYYMMDD'}}-{{faker 'number.int' min=1000 max=9999}}"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "streamingMode": null,
+      "streamingInterval": 0
+    }
+  ],
+  "rootChildren": [
+    {
+      "type": "route",
+      "uuid": "b2c3d4e5-2222-4222-b222-222222222221"
+    },
+    {
+      "type": "route",
+      "uuid": "c3d4e5f6-3333-4333-c333-333333333331"
+    },
+    {
+      "type": "route",
+      "uuid": "d4e5f6a7-4444-4444-d444-444444444441"
+    }
+  ],
+  "cors": true
+}
